@@ -3,13 +3,16 @@ import shutil
 import glob
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import OllamaEmbeddings
-from langchain_community.vectorstores import Chroma
-from langchain_community.chat_models import ChatOllama
+from langchain_ollama import OllamaEmbeddings
+from langchain_chroma import Chroma
+from langchain_ollama import ChatOllama
 from langchain.chains import RetrievalQA
 from langchain_core.prompts import ChatPromptTemplate
+from rich.console import Console
+from rich.prompt import Prompt
 
 def main():
+    console = Console()
     # Configuration
     to_import_dir = "docs/to-import"
     indexed_dir = "docs/indexed"
@@ -22,7 +25,7 @@ def main():
     os.makedirs(to_import_dir, exist_ok=True)
     os.makedirs(indexed_dir, exist_ok=True)
 
-    print(f"Initializing Ollama embeddings with model '{model_name}' at {ollama_base_url}")
+    console.print(f"Initializing Ollama embeddings with model '{model_name}' at {ollama_base_url}")
     try:
         embeddings = OllamaEmbeddings(
             base_url=ollama_base_url,
@@ -32,7 +35,7 @@ def main():
         # Process new documents
         pdf_files = glob.glob(os.path.join(to_import_dir, "*.pdf"))
         if pdf_files:
-            print(f"Found {len(pdf_files)} new PDF(s) to process.")
+            console.print(f"Found {len(pdf_files)} new PDF(s) to process.")
             
             # Initialize or load vector store
             vectorstore = Chroma(
@@ -46,7 +49,7 @@ def main():
             )
 
             for pdf_path in pdf_files:
-                print(f"Processing: {pdf_path}")
+                console.print(f"Processing: {pdf_path}")
                 try:
                     loader = PyPDFLoader(pdf_path)
                     docs = loader.load()
@@ -56,11 +59,11 @@ def main():
                     # Move to indexed directory
                     filename = os.path.basename(pdf_path)
                     shutil.move(pdf_path, os.path.join(indexed_dir, filename))
-                    print(f"Successfully indexed and moved {filename}")
+                    console.print(f"Successfully indexed and moved {filename}")
                 except Exception as e:
-                    print(f"Error processing {pdf_path}: {e}")
+                    console.print(f"Error processing {pdf_path}: {e}")
         else:
-            print("No new PDFs found in docs/to-import.")
+            console.print("No new PDFs found in docs/to-import.")
             # We still need the vectorstore for the chat loop
             vectorstore = Chroma(
                 persist_directory=persist_directory,
@@ -68,7 +71,7 @@ def main():
             )
 
         # Chat and RAG Setup
-        print(f"Initializing Chat model '{chat_model_name}' at {ollama_base_url}")
+        console.print(f"Initializing Chat model '{chat_model_name}' at {ollama_base_url}")
         chat_model = ChatOllama(
             base_url=ollama_base_url,
             model=chat_model_name,
@@ -83,34 +86,34 @@ def main():
             return_source_documents=True
         )
 
-        print("\n--- Interactive RAG Chat ---")
-        print("Enter your queries below. Type 'exit' or 'quit' to stop.")
+        console.print("\n[bold magenta]--- Interactive RAG Chat ---[/bold magenta]")
+        console.print("Enter your queries below. Type [bold red]'exit'[/bold red] or [bold red]'quit'[/bold red] to stop.")
         
         while True:
-            query = input("\nQuery > ")
+            query = Prompt.ask("\n[orange1]Question[/orange1]")
             if query.lower() in ["exit", "quit"]:
-                print("Exiting chat...")
+                console.print("[bold red]Exiting chat...[/bold red]")
                 break
             
             if not query.strip():
                 continue
                 
-            print("Generating answer...")
+            console.print("[dim]Generating answer...[/dim]")
             try:
                 response = qa_chain.invoke({"query": query})
-                print("\n--- Answer ---")
-                print(response["result"])
+                console.print("\n[bold green]--- Answer ---[/bold green]")
+                console.print(response["result"])
                 
-                print("\n--- Sources ---")
+                console.print("\n[bold yellow]--- Sources ---[/bold yellow]")
                 for doc in response["source_documents"]:
                     page = doc.metadata.get('page', 'unknown page')
                     content = doc.page_content[:100].replace('\n', ' ')
-                    print(f"- Page {page}: {content}...")
+                    console.print(f"[dim]- Page {page}: {content}...[/dim]")
             except Exception as e:
-                print(f"Error during query: {e}")
+                console.print(f"[bold red]Error during query: {e}[/bold red]")
 
     except Exception as e:
-        print(f"Critical Error: {e}")
+        console.print(f"[bold red]Critical Error: {e}[/bold red]")
 
 if __name__ == "__main__":
     main()
