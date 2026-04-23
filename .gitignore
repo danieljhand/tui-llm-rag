@@ -20,6 +20,7 @@ Thumbs.db
 
 # ChromaDB (Vector DB storage)
 docs/chroma/
+docs
 
 # Project specific: documents that could be large or private
 # We want to keep the src/docs/indexed etc. but maybe ignore the raw input if it's huge
