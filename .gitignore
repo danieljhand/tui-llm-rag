@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv
+venv/
+ENV/
+env/
+
+# Environment variables
+.env
+
+# IDEs
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ChromaDB (Vector DB storage)
+docs/chroma/
+
+# Project specific: documents that could be large or private
+# We want to keep the src/docs/indexed etc. but maybe ignore the raw input if it's huge
+# However, for a repo, we usually only ignore the database itself.
+# the README says docs/to-import is where you put files.
+# We should definitely ignore the chroma db.
