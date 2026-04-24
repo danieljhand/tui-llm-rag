@@ -2,6 +2,7 @@ import os
 import shutil
 import glob
 from langchain_community.document_loaders import PyPDFLoader
+from langchain_community.document_loaders import UnstructuredPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_ollama import OllamaEmbeddings
 from langchain_chroma import Chroma
@@ -52,6 +53,7 @@ def main():
                 console.print(f"Processing: {pdf_path}")
                 try:
                     loader = PyPDFLoader(pdf_path)
+                    #loader = UnstructuredPDFLoader(pdf_path)
                     docs = loader.load()
                     splits = text_splitter.split_documents(docs)
                     vectorstore.add_documents(splits)
