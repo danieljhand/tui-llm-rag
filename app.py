@@ -18,19 +18,19 @@ def main():
     to_import_dir = "docs/to-import"
     indexed_dir = "docs/indexed"
     ollama_base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-    model_name = "embeddinggemma"
-    chat_model_name = "gemma4:latest"
+    embedding_model_name = os.getenv("EMBEDDING_MODEL_NAME", "embeddinggemma")
+    chat_model_name = os.getenv("CHAT_MODEL_NAME", "gemma4:latest")
     persist_directory = "./docs/chroma"
 
     # Ensure directories exist
     os.makedirs(to_import_dir, exist_ok=True)
     os.makedirs(indexed_dir, exist_ok=True)
 
-    console.print(f"Initializing Ollama embeddings with model '{model_name}' at {ollama_base_url}")
+    console.print(f"Initializing Ollama embeddings with model '{embedding_model_name}' at {ollama_base_url}")
     try:
         embeddings = OllamaEmbeddings(
             base_url=ollama_base_url,
-            model=model_name
+            model=embedding_model_name
         )
 
         # Process new documents
