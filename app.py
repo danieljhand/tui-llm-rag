@@ -16,7 +16,7 @@ def main():
     # Configuration
     to_import_dir = "docs/to-import"
     indexed_dir = "docs/indexed"
-    ollama_base_url = "http://localhost:11434"
+    ollama_base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
     model_name = "embeddinggemma"
     chat_model_name = "gemma4:latest"
     persist_directory = "./docs/chroma"
