@@ -106,9 +106,11 @@ def main():
                 
                 console.print("\n[bold yellow]--- Sources ---[/bold yellow]")
                 for doc in response["source_documents"]:
+                    source = doc.metadata.get('source', 'unknown source')
+                    filename = os.path.basename(source)
                     page = doc.metadata.get('page', 'unknown page')
                     content = doc.page_content[:100].replace('\n', ' ')
-                    console.print(f"[dim]- Page {page}: {content}...[/dim]")
+                    console.print(f"[dim]- {filename} (Page {page}): {content}...[/dim]")
             except Exception as e:
                 console.print(f"[bold red]Error during query: {e}[/bold red]")
 
