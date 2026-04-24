@@ -11,6 +11,7 @@ from langchain.chains import RetrievalQA
 from langchain_core.prompts import ChatPromptTemplate
 from rich.console import Console
 from rich.prompt import Prompt
+from utils import trace_performance
 
 def main():
     console = Console()
@@ -56,7 +57,21 @@ def main():
                     #loader = UnstructuredPDFLoader(pdf_path)
                     docs = loader.load()
                     splits = text_splitter.split_documents(docs)
-                    vectorstore.add_documents(splits)
+                    
+                    # We use a wrapper approach because we cannot decorate 
+                    # an object method call directly in-place like this 
+                    # without a helper function or wrapping the object.
+                    # To keep it simple and avoid syntax errors, 
+                    # we'll use a small helper function.
+                    
+                    def add_docs_traced(vstore, splits_data):
+                        @trace_performance("Vector Store Add (Embeddings + Storage)")
+                        def wrapper():
+                            vstore.add_documents(splits_data)
+                        result = wrapper()
+                        return result[0] if isinstance(result, tuple) else result
+
+                    add_docs_traced(vectorstore, splits)
                     
                     # Move to indexed directory
                     filename = os.path.basename(pdf_path)
@@ -81,10 +96,11 @@ def main():
         )
 
         # Create the RAG chain using RetrievalQA
+        retriever = vectorstore.as_retriever(search_kwargs={"k": 5})
         qa_chain = RetrievalQA.from_chain_type(
             llm=chat_model,
             chain_type="stuff",
-            retriever=vectorstore.as_retriever(search_kwargs={"k": 5}),
+            retriever=retriever,
             return_source_documents=True
         )
 
@@ -102,7 +118,15 @@ def main():
                 
             console.print("[dim]Generating answer...[/dim]")
             try:
-                response = qa_chain.invoke({"query": query})
+                # We use a helper to wrap the call since we can't decorate a line of code
+                def run_qa(chain, query_text):
+                    @trace_performance("Chat Model Response (Generation)")
+                    def wrapper():
+                        return chain.invoke({"query": query_text})
+                    result = wrapper()
+                    return result[0] if isinstance(result, tuple) else result
+
+                response = run_qa(qa_chain, query)
                 console.print("\n[bold green]--- Answer ---[/bold green]")
                 console.print(response["result"])
                 
