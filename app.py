@@ -34,16 +34,16 @@ def main():
             model=embedding_model_name
         )
 
+        # Initialize vector store once (shared by ingestion and chat)
+        vectorstore = Chroma(
+            persist_directory=persist_directory,
+            embedding_function=embeddings
+        )
+
         # Process new documents
         pdf_files = glob.glob(os.path.join(to_import_dir, "*.pdf"))
         if pdf_files:
             console.print(f"Found {len(pdf_files)} new PDF(s) to process.")
-            
-            # Initialize or load vector store
-            vectorstore = Chroma(
-                persist_directory=persist_directory,
-                embedding_function=embeddings
-            )
 
             text_splitter = RecursiveCharacterTextSplitter(
                 chunk_size=1000,
@@ -57,22 +57,21 @@ def main():
                     #loader = UnstructuredPDFLoader(pdf_path)
                     docs = loader.load()
                     splits = text_splitter.split_documents(docs)
-                    
-                    # We use a wrapper approach because we cannot decorate 
-                    # an object method call directly in-place like this 
+
+                    # We use a wrapper approach because we cannot decorate
+                    # an object method call directly in-place like this
                     # without a helper function or wrapping the object.
-                    # To keep it simple and avoid syntax errors, 
+                    # To keep it simple and avoid syntax errors,
                     # we'll use a small helper function.
-                    
+
                     def add_docs_traced(vstore, splits_data):
                         @trace_performance("Vector Store Add (Embeddings + Storage)")
                         def wrapper():
                             vstore.add_documents(splits_data)
-                        result = wrapper()
-                        return result[0] if isinstance(result, tuple) else result
+                        return wrapper()
 
                     add_docs_traced(vectorstore, splits)
-                    
+
                     # Move to indexed directory
                     filename = os.path.basename(pdf_path)
                     shutil.move(pdf_path, os.path.join(indexed_dir, filename))
@@ -81,11 +80,6 @@ def main():
                     console.print(f"Error processing {pdf_path}: {e}")
         else:
             console.print("No new PDFs found in docs/to-import.")
-            # We still need the vectorstore for the chat loop
-            vectorstore = Chroma(
-                persist_directory=persist_directory,
-                embedding_function=embeddings
-            )
 
         # Chat and RAG Setup
         console.print(f"Initializing Chat model '{chat_model_name}' at {ollama_base_url}")
@@ -123,8 +117,7 @@ def main():
                     @trace_performance("Chat Model Response (Generation)")
                     def wrapper():
                         return chain.invoke({"query": query_text})
-                    result = wrapper()
-                    return result[0] if isinstance(result, tuple) else result
+                    return wrapper()
 
                 response = run_qa(qa_chain, query)
                 console.print("\n[bold green]--- Answer ---[/bold green]")
@@ -142,6 +135,13 @@ def main():
 
     except Exception as e:
         console.print(f"[bold red]Critical Error: {e}[/bold red]")
+    finally:
+        # Close the Chroma client to release the database lock.
+        # Use getattr to stay safe if vectorstore was only partially constructed.
+        client = getattr(locals().get("vectorstore"), "_client", None)
+        if client is not None:
+            client.close()
+            console.print("[dim]Chroma database connection closed.[/dim]")
 
 if __name__ == "__main__":
     main()
