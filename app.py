@@ -32,6 +32,7 @@ from langchain_core.documents import Document
 
 from rich.console import Console
 from rich.prompt import Prompt
+from rich.markdown import Markdown
 
 from utils import trace_performance
 
@@ -261,9 +262,9 @@ def run_chat_loop(qa_chain: RetrievalQA, max_query_length: int) -> None:
         try:
             response = invoke_qa_chain(qa_chain, query)
             
-            # Display the generated answer
+            # Display the generated answer with Markdown rendering
             console.print("\n[bold green]--- Answer ---[/bold green]")
-            console.print(response["result"])
+            console.print(Markdown(response["result"]))
 
             # Display source documents for transparency and verification
             console.print("\n[bold yellow]--- Sources ---[/bold yellow]")
