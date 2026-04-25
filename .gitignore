@@ -9,6 +9,7 @@ env/
 
 # Environment variables
 .env
+*.log
 
 # IDEs
 .vscode/
@@ -27,3 +28,4 @@ docs
 # However, for a repo, we usually only ignore the database itself.
 # the README says docs/to-import is where you put files.
 # We should definitely ignore the chroma db.
+.aider*
