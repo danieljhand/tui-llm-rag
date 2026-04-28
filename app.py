@@ -18,6 +18,8 @@ import os
 import shutil
 import glob
 import logging
+import argparse
+import json
 from typing import List
 
 import requests
@@ -180,6 +182,34 @@ def ingest_documents(
             logger.info(f"Indexed and moved {filename}")
 
 
+def execute_single_query(qa_chain: RetrievalQA, query: str) -> dict:
+    """Executes a single query and returns results in JSON-serializable format.
+    
+    Args:
+        qa_chain: Configured RetrievalQA chain
+        query: User's question/query
+        
+    Returns:
+        dict: Contains 'answer' (string) and 'sources' (list of dicts with metadata)
+    """
+    response = invoke_qa_chain(qa_chain, query)
+    
+    # Format sources as a list of dictionaries
+    sources = []
+    for doc in response["source_documents"]:
+        source_path = doc.metadata.get('source', 'unknown')
+        sources.append({
+            "filename": os.path.basename(source_path),
+            "page": doc.metadata.get('page', 'unknown'),
+            "content_preview": doc.page_content[:200].replace('\n', ' ')
+        })
+    
+    return {
+        "answer": response["result"],
+        "sources": sources
+    }
+
+
 def build_retrieval_chain(
     vectorstore: Chroma, 
     chat_model_name: str, 
@@ -287,13 +317,20 @@ def run_chat_loop(qa_chain: RetrievalQA, max_query_length: int) -> None:
 def main() -> None: # Recommendation 17: Type annotations
     """Main orchestrator for the RAG application.
     
+    Supports two modes:
+    1. Interactive mode (default): Continuous Q&A loop
+    2. Single query mode (--query): Execute one query and output JSON to stdout
+    
+    Command-line Arguments:
+        --query: Single query to execute (outputs JSON and exits)
+    
     Workflow:
     1. Load configuration from environment variables
     2. Verify Ollama connectivity
     3. Initialize ChromaDB with embeddings
     4. Ingest any new PDFs from to-import directory
     5. Build retrieval chain
-    6. Start interactive chat loop
+    6. Start interactive chat loop (or execute single query)
     7. Clean up resources on exit
     
     Environment Variables:
@@ -305,6 +342,10 @@ def main() -> None: # Recommendation 17: Type annotations
         RETRIEVAL_TOP_K: Number of chunks to retrieve (default: 5)
         MAX_QUERY_LENGTH: Max query characters (default: 2000)
     """
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description="RAG Application with Ollama and ChromaDB")
+    parser.add_argument("--query", type=str, help="Execute a single query and output JSON results")
+    args = parser.parse_args()
     # Configuration via Env Vars (Recommendations 12, 13, 14 implemented)
     # Directory structure for document management
     to_import_dir = "docs/to-import"
@@ -356,8 +397,23 @@ def main() -> None: # Recommendation 17: Type annotations
         # Build the RAG chain (retriever + LLM)
         qa_chain = build_retrieval_chain(vectorstore, chat_model_name, ollama_base_url, retrieval_top_k)
         
-        # Start interactive Q&A session
-        run_chat_loop(qa_chain, max_query_length)
+        # Check if running in single-query mode or interactive mode
+        if args.query:
+            # Single query mode: execute and output JSON
+            try:
+                result = execute_single_query(qa_chain, args.query)
+                print(json.dumps(result, indent=2, ensure_ascii=False))
+            except Exception as e:
+                error_result = {
+                    "error": str(e),
+                    "answer": None,
+                    "sources": []
+                }
+                print(json.dumps(error_result, indent=2, ensure_ascii=False))
+                logger.error(f"Error executing single query: {e}", exc_info=True)
+        else:
+            # Interactive mode: start chat loop
+            run_chat_loop(qa_chain, max_query_length)
 
     except KeyboardInterrupt: # Recommendation 1: Dedicated interrupt block
         console.print("\n[bold yellow]Shutdown requested by user (Ctrl+C).[/bold yellow]")
@@ -371,7 +427,9 @@ def main() -> None: # Recommendation 17: Type annotations
         client = getattr(vectorstore, "_client", None) if vectorstore else None
         if client is not None:
             client.close()
-            console.print("[dim]Chroma database connection cleanly closed.[/dim]")
+            # Only print to console in interactive mode
+            if not (hasattr(locals().get('args'), 'query') and locals().get('args').query):
+                console.print("[dim]Chroma database connection cleanly closed.[/dim]")
 
 
 if __name__ == "__main__":
