@@ -134,7 +134,7 @@ def ingest_documents(
         Errors in individual PDFs are logged but don't stop batch processing
     """
     # Scan for all PDF files in the import directory
-    pdf_files = glob.glob(os.path.join(to_import_dir, "*.pdf"))
+    pdf_files = glob.glob(os.path.join(to_import_dir, "*.[pP][dD][fF]"))
     
     # Early return if no work to do
     if not pdf_files:
