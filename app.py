@@ -343,8 +343,35 @@ def main() -> None: # Recommendation 17: Type annotations
         MAX_QUERY_LENGTH: Max query characters (default: 2000)
     """
     # Parse command-line arguments
-    parser = argparse.ArgumentParser(description="RAG Application with Ollama and ChromaDB")
-    parser.add_argument("--query", type=str, help="Execute a single query and output JSON results")
+    parser = argparse.ArgumentParser(
+        description="RAG (Retrieval-Augmented Generation) Application with Ollama and ChromaDB",
+        epilog="""
+Examples:
+  Interactive mode:
+    python app.py
+    
+  Single query mode:
+    python app.py --query "What is the main topic of the documents?"
+    
+Environment Variables:
+  OLLAMA_BASE_URL       Ollama API endpoint (default: http://localhost:11434)
+  EMBEDDING_MODEL_NAME  Model for embeddings (default: embeddinggemma)
+  CHAT_MODEL_NAME       Model for chat completions (default: gemma4:latest)
+  CHUNK_SIZE            Document chunk size in characters (default: 1000)
+  CHUNK_OVERLAP         Overlapping characters between chunks (default: 100)
+  RETRIEVAL_TOP_K       Number of document chunks to retrieve (default: 5)
+  MAX_QUERY_LENGTH      Maximum query length in characters (default: 2000)
+        """,
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "--query", 
+        type=str, 
+        metavar="QUESTION",
+        help="Execute a single query and output JSON results to stdout. "
+             "The output contains 'answer' and 'sources' fields. "
+             "If not provided, starts interactive chat mode."
+    )
     args = parser.parse_args()
     # Configuration via Env Vars (Recommendations 12, 13, 14 implemented)
     # Directory structure for document management
