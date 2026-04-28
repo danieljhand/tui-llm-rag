@@ -201,7 +201,7 @@ def execute_single_query(qa_chain: RetrievalQA, query: str) -> dict:
         sources.append({
             "filename": os.path.basename(source_path),
             "page": doc.metadata.get('page', 'unknown'),
-            "content_preview": doc.page_content[:200].replace('\n', ' ')
+            "content_preview": doc.page_content[:2000].replace('\n', ' ')
         })
     
     return {
