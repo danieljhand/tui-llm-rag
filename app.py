@@ -38,6 +38,11 @@ from rich.markdown import Markdown
 
 from utils import trace_performance
 
+from dotenv import load_dotenv
+
+# --- Load environment parameters ---
+_ = load_dotenv()
+
 # --- Global Initialization ---
 # Rich console for formatted terminal output
 console = Console()

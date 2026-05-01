@@ -9,6 +9,10 @@ import os
 import functools
 from rich.console import Console
 from typing import Any
+from dotenv import load_dotenv
+
+
+_ = load_dotenv() 
 
 # Rich console for formatted output
 console = Console()
